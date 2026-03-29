@@ -10,10 +10,10 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
   imports: [CommonModule],
   template: `
     <main class="game-container" [ngClass]="['grid-' + players(), 'layout-' + layout(), players() === 1 ? 'p1-mode' : '']">
-      
+
       <!-- Player Grid -->
-      <section 
-        *ngFor="let p of playerList(); let i = index" 
+      <section
+        *ngFor="let p of playerList(); let i = index"
         class="player player-{{i}}"
         [class.defeated]="isPlayerDefeated(i)"
         [class.inspecting]="inspectingPlayer() === i"
@@ -27,12 +27,12 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
           <button class="hit-area minus" (click)="handleAdjust(i, -1)">
             <span class="op-label">-</span>
           </button>
-          
+
           <!-- Central Display -->
-          <div class="life-display" 
+          <div class="life-display"
                [style.fontSize]="getFontSize(i)"
                (click)="toggleCommanderDamage(i)">
-            
+
             <ng-container [ngSwitch]="getDisplayMode(i)">
               <div *ngSwitchCase="'back'" class="back-btn">
                 <span class="back-icon">←</span>
@@ -128,7 +128,7 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
       grid-template-columns: 1fr 1fr;
       grid-template-rows: 1fr 1fr 1fr;
     }
-    .layout-cross .player-0 { grid-area: 1 / 1 / 2 / 3; border-bottom: 2px solid #000; } 
+    .layout-cross .player-0 { grid-area: 1 / 1 / 2 / 3; border-bottom: 2px solid #000; }
     .layout-cross .player-1 { grid-area: 2 / 1; border-right: 2px solid #000; border-bottom: 2px solid #000; }
     .layout-cross .player-2 { grid-area: 2 / 2; border-bottom: 2px solid #000; }
     .layout-cross .player-3 { grid-area: 3 / 1 / 4 / 3; }
@@ -154,7 +154,7 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
 
     .life-display {
       flex: 0 0 auto; min-width: 40%; font-weight: 900;
-      text-align: center; line-height: 1; z-index: 20; 
+      text-align: center; line-height: 1; z-index: 20;
       cursor: pointer;
     }
 
@@ -199,7 +199,7 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
   `]
 })
 export class App {
-  public players = signal(3);
+  public players = signal(4);
   public layout = signal<LayoutType>('horizontal');
   public startLifeValue = signal(40);
   public showMenu = signal(false);
@@ -231,7 +231,7 @@ export class App {
 
   public handleAdjust(index: number, amount: number): void {
     const inspectorIdx = this.inspectingPlayer();
-    
+
     if (inspectorIdx === null) {
       const p = this.playerList()[index];
       if (p) p.life.update((v: number) => v + amount);
