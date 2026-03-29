@@ -15,27 +15,48 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
       <section 
         *ngFor="let p of playerList(); let i = index" 
         class="player player-{{i}}"
-        [class.defeated]="p.life() <= 0"
+        [class.defeated]="isPlayerDefeated(i)"
+        [class.inspecting]="inspectingPlayer() === i"
+        [class.opponent-view]="inspectingPlayer() !== null && inspectingPlayer() !== i"
       >
         <div class="player-box" [style.transform]="getRotation(i)">
-          <div *ngIf="p.life() <= 0" class="skull-bg">☠</div>
+          <!-- Background Skull (Show if life <= 0 or 21 commander damage) -->
+          <div *ngIf="isPlayerDefeated(i) && inspectingPlayer() === null" class="skull-bg">☠</div>
 
-          <button class="hit-area minus" (click)="adjustLife(i, -1)">
+          <!-- Clickable Area Minus -->
+          <button class="hit-area minus" (click)="handleAdjust(i, -1)">
             <span class="op-label">-</span>
           </button>
           
-          <div class="life-display" [style.fontSize]="getFontSize(i)">
-            {{ p.life() }}
+          <!-- Central Display -->
+          <div class="life-display" 
+               [style.fontSize]="getFontSize(i)"
+               (click)="toggleCommanderDamage(i)">
+            
+            <ng-container [ngSwitch]="getDisplayMode(i)">
+              <div *ngSwitchCase="'back'" class="back-btn">
+                <span class="back-icon">←</span>
+                <span class="back-text">BACK</span>
+              </div>
+
+              <div *ngSwitchCase="'damage'" class="damage-view">
+                <div class="damage-val">{{ p.damageDealtToTarget[inspectingPlayer()!]?.() }}</div>
+                <div class="damage-label">CD</div>
+              </div>
+
+              <span *ngSwitchDefault>{{ p.life() }}</span>
+            </ng-container>
           </div>
 
-          <button class="hit-area plus" (click)="adjustLife(i, 1)">
+          <!-- Clickable Area Plus -->
+          <button class="hit-area plus" (click)="handleAdjust(i, 1)">
             <span class="op-label">+</span>
           </button>
         </div>
       </section>
 
       <!-- Central Menu Button -->
-      <button *ngIf="!showMenu()" class="central-menu-btn" (click)="toggleMenu()">MENU</button>
+      <button *ngIf="!showMenu() && inspectingPlayer() === null" class="central-menu-btn" (click)="toggleMenu()">MENU</button>
 
       <!-- Options Overlay -->
       <div *ngIf="showMenu()" class="overlay">
@@ -133,8 +154,22 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
 
     .life-display {
       flex: 0 0 auto; min-width: 40%; font-weight: 900;
-      text-align: center; line-height: 1; z-index: 20; pointer-events: none;
+      text-align: center; line-height: 1; z-index: 20; 
+      cursor: pointer;
     }
+
+    .damage-view { display: flex; flex-direction: column; align-items: center; }
+    .damage-label { font-size: 0.8rem; font-weight: bold; margin-top: 10px; opacity: 0.6; }
+
+    .back-btn {
+      display: flex; flex-direction: column; align-items: center;
+      background: #000; color: #fff; padding: 15px; border-radius: 8px;
+    }
+    .back-icon { font-size: 2rem; }
+    .back-text { font-size: 0.8rem; font-weight: bold; }
+
+    .inspecting { background: #fff !important; }
+    .opponent-view { background: #bbb !important; }
 
     .hit-area:active { background: rgba(0,0,0,0.1); }
     .defeated .hit-area:active { background: rgba(255,255,255,0.2); }
@@ -145,10 +180,7 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
       font-weight: bold; font-size: 0.7rem; box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
-    /* Move menu up in 1 player mode to avoid covering numbers */
-    .p1-mode .central-menu-btn {
-      top: 10%;
-    }
+    .p1-mode .central-menu-btn { top: 10%; }
 
     .overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -172,19 +204,62 @@ export class App {
   public startLifeValue = signal(40);
   public showMenu = signal(false);
   public menuStep = signal<MenuStep>('players');
-
   public tempPlayers = signal(3);
   private tempLayout: LayoutType = 'horizontal';
 
+  public inspectingPlayer = signal<number | null>(null);
+
   public playerList = computed(() => {
-    return Array.from({ length: this.players() }, () => ({
-      life: signal(this.startLifeValue())
+    const playerCount = this.players();
+    return Array.from({ length: playerCount }, () => ({
+      life: signal(this.startLifeValue()),
+      damageDealtToTarget: Array.from({ length: playerCount }, () => signal(0))
     }));
   });
 
-  public adjustLife(index: number, amount: number): void {
+  public isPlayerDefeated(index: number): boolean {
     const p = this.playerList()[index];
-    if (p) p.life.update((v: number) => v + amount);
+    if (!p) return false;
+
+    // Check 1: Life <= 0
+    if (p.life() <= 0) return true;
+
+    // Check 2: Any single opponent dealt 21 or more commander damage
+    // We need to check damageDealtToTarget[index] from ALL other players
+    return this.playerList().some(attacker => attacker.damageDealtToTarget[index]() >= 21);
+  }
+
+  public handleAdjust(index: number, amount: number): void {
+    const inspectorIdx = this.inspectingPlayer();
+    
+    if (inspectorIdx === null) {
+      const p = this.playerList()[index];
+      if (p) p.life.update((v: number) => v + amount);
+    } else {
+      if (index !== inspectorIdx) {
+        const attacker = this.playerList()[index];
+        const target = this.playerList()[inspectorIdx];
+        const dmgSignal = attacker.damageDealtToTarget[inspectorIdx];
+        dmgSignal.update((v: number) => Math.max(0, v + amount));
+        target.life.update((v: number) => v - amount);
+      }
+    }
+  }
+
+  public toggleCommanderDamage(index: number): void {
+    if (this.players() === 1) return;
+    if (this.inspectingPlayer() === index) {
+      this.inspectingPlayer.set(null);
+    } else if (this.inspectingPlayer() === null) {
+      this.inspectingPlayer.set(index);
+    }
+  }
+
+  public getDisplayMode(index: number): 'back' | 'damage' | 'life' {
+    const inspector = this.inspectingPlayer();
+    if (inspector === null) return 'life';
+    if (inspector === index) return 'back';
+    return 'damage';
   }
 
   public toggleMenu(): void {
@@ -198,7 +273,6 @@ export class App {
   public nextStep(step: MenuStep, p?: number, l?: LayoutType): void {
     if (p !== undefined) this.tempPlayers.set(p);
     if (l !== undefined) this.tempLayout = l;
-    
     const tp = this.tempPlayers();
     if (step === 'layout' && (tp <= 3 || tp >= 5)) {
       this.tempLayout = (tp === 2) ? 'vertical' : 'horizontal';
@@ -212,52 +286,48 @@ export class App {
     this.startLifeValue.set(life);
     this.players.set(this.tempPlayers());
     this.layout.set(this.tempLayout);
+    this.inspectingPlayer.set(null);
     this.showMenu.set(false);
   }
 
   public getRotation(index: number): string {
     const n = this.players();
     const l = this.layout();
-
     if (n === 5) {
       if (index === 4) return 'rotate(0deg)';
       return (index % 2 === 0) ? 'rotate(90deg)' : 'rotate(-90deg)';
     }
-
     if (l === 'cross' && n === 4) {
       if (index === 0) return 'rotate(180deg)';
       if (index === 1) return 'rotate(90deg)';
       if (index === 2) return 'rotate(-90deg)';
       return 'rotate(0deg)';
     }
-
     if (n === 3) {
       if (index === 0) return 'rotate(0deg)';
       if (index === 1) return 'rotate(90deg)';
       return 'rotate(-90deg)';
     }
-
     if (l === 'horizontal') {
       if (n === 1) return 'rotate(0deg)';
       return (index % 2 === 0) ? 'rotate(90deg)' : 'rotate(-90deg)';
     }
-
     if (l === 'vertical') {
       if (n === 2) return index === 0 ? 'rotate(180deg)' : 'rotate(0deg)';
       return index < 2 ? 'rotate(180deg)' : 'rotate(0deg)';
     }
-
     return 'rotate(0deg)';
   }
 
   public getFontSize(index: number): string {
     const n = this.players();
     const l = this.layout();
-
+    const mode = this.getDisplayMode(index);
+    if (mode === 'back') return '1rem';
+    if (mode === 'damage') return '12vw';
     if (n === 3) return index === 0 ? '20vh' : '12vw';
     if (n === 5) return index === 4 ? '20vh' : '12vw';
     if (n === 6) return '10vw';
-
     if (l === 'cross' && n === 4) return '12vw';
     if (l === 'horizontal' && n === 4) return '12vw';
     if (n === 1) return '35vh';
