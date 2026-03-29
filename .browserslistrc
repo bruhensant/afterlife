@@ -1,0 +1,7 @@
+# Browserslist optimized for Kindle (Chromium 75 / Safari 5 equivalent)
+> 0.5%
+last 5 versions
+Chrome 75
+Safari 12
+not dead
+not IE 11
