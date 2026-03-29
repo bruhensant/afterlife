@@ -18,27 +18,22 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
         [class.defeated]="p.life() <= 0"
       >
         <div class="player-box" [style.transform]="getRotation(i)">
-          <!-- Background Skull (Only if defeated) -->
           <div *ngIf="p.life() <= 0" class="skull-bg">☠</div>
 
-          <!-- Clickable Area Minus -->
           <button class="hit-area minus" (click)="adjustLife(i, -1)">
             <span class="op-label">-</span>
           </button>
           
-          <!-- Central Life Display -->
           <div class="life-display" [style.fontSize]="getFontSize(i)">
             {{ p.life() }}
           </div>
 
-          <!-- Clickable Area Plus -->
           <button class="hit-area plus" (click)="adjustLife(i, 1)">
             <span class="op-label">+</span>
           </button>
         </div>
       </section>
 
-      <!-- Central Floating Menu Button -->
       <button *ngIf="!showMenu()" class="central-menu-btn" (click)="toggleMenu()">MENU</button>
 
       <!-- Options Overlay -->
@@ -56,7 +51,8 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
             <div class="selector-grid">
               <button (click)="nextStep('life', undefined, 'horizontal')">HORIZONTAL</button>
               <button (click)="nextStep('life', undefined, 'vertical')">VERTICAL</button>
-              <button *ngIf="players() === 4" (click)="nextStep('life', undefined, 'cross')">CROSS</button>
+              <!-- Fixed: Now checks tempPlayers instead of players -->
+              <button *ngIf="tempPlayers() === 4" (click)="nextStep('life', undefined, 'cross')">CROSS</button>
             </div>
           </ng-container>
 
@@ -85,10 +81,8 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
       background: #fff; position: relative;
     }
 
-    /* Base Borders */
     .player { background: #fff; color: #000; overflow: hidden; position: relative; }
 
-    /* Grids Standard */
     .grid-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
     .grid-2 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
     .grid-2 .player-0 { border-bottom: 2px solid #000; }
@@ -112,7 +106,6 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
     .grid-6 .player-0, .grid-6 .player-1, .grid-6 .player-2, .grid-6 .player-3 { border-bottom: 2px solid #000; }
     .grid-6 .player-0, .grid-6 .player-2, .grid-6 .player-4 { border-right: 2px solid #000; }
 
-    /* CROSS Layout (4 Players) - No Gaps */
     .layout-cross.grid-4 {
       grid-template-columns: 1fr 1fr;
       grid-template-rows: 1fr 1fr 1fr;
@@ -149,7 +142,6 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
     .hit-area:active { background: rgba(0,0,0,0.1); }
     .defeated .hit-area:active { background: rgba(255,255,255,0.2); }
 
-    /* Floating Menu Button */
     .central-menu-btn {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       z-index: 100; background: #fff; border: 2px solid #000; width: 80px; height: 40px;
@@ -179,7 +171,8 @@ export class App {
   public showMenu = signal(false);
   public menuStep = signal<MenuStep>('players');
 
-  private tempPlayers = 3;
+  // Used to track selection before starting the game
+  public tempPlayers = signal(3);
   private tempLayout: LayoutType = 'horizontal';
 
   public playerList = computed(() => {
@@ -194,16 +187,20 @@ export class App {
   }
 
   public toggleMenu(): void {
-    if (!this.showMenu()) this.menuStep.set('players');
+    if (!this.showMenu()) {
+      this.menuStep.set('players');
+      this.tempPlayers.set(this.players());
+    }
     this.showMenu.update(v => !v);
   }
 
   public nextStep(step: MenuStep, p?: number, l?: LayoutType): void {
-    if (p !== undefined) this.tempPlayers = p;
+    if (p !== undefined) this.tempPlayers.set(p);
     if (l !== undefined) this.tempLayout = l;
     
-    if (step === 'layout' && (this.tempPlayers <= 3 || this.tempPlayers >= 5)) {
-      this.tempLayout = (this.tempPlayers === 2) ? 'vertical' : 'horizontal';
+    const tp = this.tempPlayers();
+    if (step === 'layout' && (tp <= 3 || tp >= 5)) {
+      this.tempLayout = (tp === 2) ? 'vertical' : 'horizontal';
       this.menuStep.set('life');
       return;
     }
@@ -212,7 +209,7 @@ export class App {
 
   public startGame(life: number): void {
     this.startLifeValue.set(life);
-    this.players.set(this.tempPlayers);
+    this.players.set(this.tempPlayers());
     this.layout.set(this.tempLayout);
     this.showMenu.set(false);
   }
@@ -221,12 +218,11 @@ export class App {
     const n = this.players();
     const l = this.layout();
 
-    // Cross Layout (4 Players)
     if (l === 'cross' && n === 4) {
-      if (index === 0) return 'rotate(180deg)'; // Top
-      if (index === 1) return 'rotate(90deg)';   // Middle-Left
-      if (index === 2) return 'rotate(-90deg)';  // Middle-Right
-      return 'rotate(0deg)';                      // Bottom
+      if (index === 0) return 'rotate(180deg)';
+      if (index === 1) return 'rotate(90deg)';
+      if (index === 2) return 'rotate(-90deg)';
+      return 'rotate(0deg)';
     }
 
     if (n === 3) {
