@@ -2,7 +2,7 @@ import { Component, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 type MenuStep = 'players' | 'layout' | 'life';
-type LayoutType = 'standard' | 'opposed' | 'side' | 'cross';
+type LayoutType = 'standard' | 'opposed' | 'cross';
 
 @Component({
   selector: 'app-root',
@@ -57,7 +57,6 @@ type LayoutType = 'standard' | 'opposed' | 'side' | 'cross';
               <button (click)="nextStep('life', undefined, 'standard')">STANDARD</button>
               <button *ngIf="players() >= 2" (click)="nextStep('life', undefined, 'opposed')">OPPOSED</button>
               <button *ngIf="players() === 4" (click)="nextStep('life', undefined, 'cross')">CROSS</button>
-              <button *ngIf="players() >= 2" (click)="nextStep('life', undefined, 'side')">SIDE-BY-SIDE</button>
             </div>
           </ng-container>
 
@@ -90,24 +89,27 @@ type LayoutType = 'standard' | 'opposed' | 'side' | 'cross';
     .grid-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
     .grid-2 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
     .grid-2 .player-0 { border-bottom: 2px solid #000; }
+    
     .grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
     .grid-3 .player-0 { grid-column: span 2; border-bottom: 2px solid #000; }
     .grid-3 .player-1 { border-right: 2px solid #000; }
 
-    /* 4 Players Standard - Horizontal Orientation <-> */
     .grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
     .grid-4 .player-0, .grid-4 .player-1 { border-bottom: 2px solid #000; }
     .grid-4 .player-0, .grid-4 .player-2 { border-right: 2px solid #000; }
 
     .grid-5 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
-    .grid-5 .player-0 { grid-column: span 2; border-bottom: 2px solid #000; }
-    .grid-5 .player-1, .grid-5 .player-3 { border-right: 2px solid #000; border-bottom: 2px solid #000; }
-    .grid-5 .player-2, .grid-5 .player-4 { border-bottom: 2px solid #000; }
-    .grid-6 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
-    .grid-6 .player { border-bottom: 2px solid #000; }
-    .grid-6 .player:nth-child(odd) { border-right: 2px solid #000; }
+    .grid-5 .player-0, .grid-5 .player-1 { border-bottom: 2px solid #000; }
+    .grid-5 .player-2, .grid-5 .player-3 { border-bottom: 2px solid #000; }
+    .grid-5 .player-0, .grid-5 .player-2 { border-right: 2px solid #000; }
+    .grid-5 .player-4 { grid-column: span 2; }
 
-    /* Layout: CROSS (Vertical Optimized - 4 Players) [ - | | - ] */
+    /* 6 Players Standard - Horizontal Orientation <-> */
+    .grid-6 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+    .grid-6 .player-0, .grid-6 .player-1, .grid-6 .player-2, .grid-6 .player-3 { border-bottom: 2px solid #000; }
+    .grid-6 .player-0, .grid-6 .player-2, .grid-6 .player-4 { border-right: 2px solid #000; }
+
+    /* Layout: CROSS (4 Players) */
     .layout-cross.grid-4 {
       grid-template-columns: 1fr 80px 1fr;
       grid-template-rows: 1fr 1.2fr 1fr;
@@ -116,9 +118,6 @@ type LayoutType = 'standard' | 'opposed' | 'side' | 'cross';
     .layout-cross .player-3 { grid-area: 3 / 1 / 4 / 4; border-top: 2px solid #000; }
     .layout-cross .player-1 { grid-area: 2 / 1; border-right: 2px solid #000; }
     .layout-cross .player-2 { grid-area: 2 / 3; border-left: 2px solid #000; }
-
-    .layout-side.grid-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
-    .layout-side.grid-2 .player-0 { border-bottom: none; border-right: 2px solid #000; }
 
     .player { background: #fff; color: #000; overflow: hidden; position: relative; }
     .player-box { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; position: relative; }
@@ -129,7 +128,7 @@ type LayoutType = 'standard' | 'opposed' | 'side' | 'cross';
 
     .skull-bg {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      font-size: 35vh; color: #eee; z-index: 1; pointer-events: none; line-height: 1;
+      font-size: 30vh; color: #eee; z-index: 1; pointer-events: none; line-height: 1;
     }
 
     .hit-area {
@@ -150,7 +149,7 @@ type LayoutType = 'standard' | 'opposed' | 'side' | 'cross';
 
     .central-menu-btn {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      z-index: 100; background: #fff; border: 2px solid #000; width: 60px; height: 40px;
+      z-index: 100; background: #fff; border: 2px solid #000; width: 80px; height: 40px;
       font-weight: bold; font-size: 0.7rem; display: flex; align-items: center; justify-content: center;
     }
 
@@ -171,13 +170,13 @@ type LayoutType = 'standard' | 'opposed' | 'side' | 'cross';
   `]
 })
 export class App {
-  public players = signal(4);
+  public players = signal(3);
   public layout = signal<LayoutType>('standard');
   public startLifeValue = signal(40);
   public showMenu = signal(false);
   public menuStep = signal<MenuStep>('players');
 
-  private tempPlayers = 4;
+  private tempPlayers = 3;
   private tempLayout: LayoutType = 'standard';
 
   public playerList = computed(() => {
@@ -199,8 +198,13 @@ export class App {
   public nextStep(step: MenuStep, p?: number, l?: LayoutType): void {
     if (p !== undefined) this.tempPlayers = p;
     if (l !== undefined) this.tempLayout = l;
-    if (step === 'layout' && (this.tempPlayers === 1)) {
-      this.tempLayout = 'standard';
+    
+    // Auto-skip layout selection for 1, 2, 3, 5 and 6 players
+    if (step === 'layout' && (this.tempPlayers <= 3 || this.tempPlayers >= 5)) {
+      if (this.tempPlayers === 1) this.tempLayout = 'standard';
+      if (this.tempPlayers === 2) this.tempLayout = 'opposed';
+      if (this.tempPlayers === 3) this.tempLayout = 'standard';
+      if (this.tempPlayers >= 5) this.tempLayout = 'standard';
       this.menuStep.set('life');
       return;
     }
@@ -218,6 +222,12 @@ export class App {
     const n = this.players();
     const l = this.layout();
 
+    if (n === 3) {
+      if (index === 0) return 'rotate(180deg)';
+      if (index === 1) return 'rotate(90deg)';
+      if (index === 2) return 'rotate(-90deg)';
+    }
+
     if (l === 'cross' && n === 4) {
       if (index === 0) return 'rotate(180deg)';
       if (index === 1) return 'rotate(90deg)';
@@ -225,24 +235,28 @@ export class App {
       return 'rotate(0deg)';
     }
 
-    // New orientation for 4 players standard <->
-    if (l === 'standard' && n === 4) {
-      if (index === 0 || index === 2) return 'rotate(90deg)';  // Left side
-      if (index === 1 || index === 3) return 'rotate(-90deg)'; // Right side
+    // Standard orientation for 4 and 6 players <->
+    if (l === 'standard' && (n === 4 || n === 6)) {
+      if (index % 2 === 0) return 'rotate(90deg)'; // Left side
+      return 'rotate(-90deg)'; // Right side
     }
 
-    if (n === 1 || l === 'side') return 'rotate(0deg)';
+    // 5 Players: 2 on Left (90), 2 on Right (-90), 1 on Bottom (0)
+    if (n === 5) {
+      if (index === 0 || index === 2) return 'rotate(90deg)';
+      if (index === 1 || index === 3) return 'rotate(-90deg)';
+      if (index === 4) return 'rotate(0deg)';
+    }
+
+    if (n === 1) return 'rotate(0deg)';
 
     if (l === 'opposed') {
-      if (n === 2 || n === 3) return index === 0 ? 'rotate(180deg)' : 'rotate(0deg)';
+      if (n === 2) return index === 0 ? 'rotate(180deg)' : 'rotate(0deg)';
       if (n === 4) return index < 2 ? 'rotate(180deg)' : 'rotate(0deg)';
-      if (n === 5) return index < 1 ? 'rotate(180deg)' : 'rotate(0deg)';
-      if (n === 6) return index < 2 ? 'rotate(180deg)' : 'rotate(0deg)';
     }
 
     if (l === 'standard') {
       if (n === 2) return index === 0 ? 'rotate(180deg)' : 'rotate(0deg)';
-      if (n >= 3) return index < (n > 4 ? 2 : 1) ? 'rotate(180deg)' : 'rotate(0deg)';
     }
 
     return 'rotate(0deg)';
@@ -251,8 +265,13 @@ export class App {
   public getFontSize(index: number): string {
     const n = this.players();
     const l = this.layout();
+
+    if (n === 3) return index === 0 ? '20vh' : '12vw';
+    if (n === 5) return index === 4 ? '20vh' : '12vw';
+    if (n === 6) return '10vw';
+
     if (l === 'cross' && n === 4) return (index === 1 || index === 2) ? '12vw' : '15vh';
-    if (l === 'standard' && n === 4) return '12vw'; // Scaled for horizontal orientation
+    if (l === 'standard' && n === 4) return '12vw';
     if (n === 1) return '35vh';
     if (n === 2) return '22vh';
     if (n <= 4) return '14vh';
