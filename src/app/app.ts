@@ -9,7 +9,7 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <main class="game-container" [ngClass]="['grid-' + players(), 'layout-' + layout()]">
+    <main class="game-container" [ngClass]="['grid-' + players(), 'layout-' + layout(), players() === 1 ? 'p1-mode' : '']">
       
       <!-- Player Grid -->
       <section 
@@ -34,6 +34,7 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
         </div>
       </section>
 
+      <!-- Central Menu Button -->
       <button *ngIf="!showMenu()" class="central-menu-btn" (click)="toggleMenu()">MENU</button>
 
       <!-- Options Overlay -->
@@ -51,7 +52,6 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
             <div class="selector-grid">
               <button (click)="nextStep('life', undefined, 'horizontal')">HORIZONTAL</button>
               <button (click)="nextStep('life', undefined, 'vertical')">VERTICAL</button>
-              <!-- Fixed: Now checks tempPlayers instead of players -->
               <button *ngIf="tempPlayers() === 4" (click)="nextStep('life', undefined, 'cross')">CROSS</button>
             </div>
           </ng-container>
@@ -83,25 +83,22 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
 
     .player { background: #fff; color: #000; overflow: hidden; position: relative; }
 
+    /* Grids */
     .grid-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
     .grid-2 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
     .grid-2 .player-0 { border-bottom: 2px solid #000; }
-    
     .grid-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
     .grid-3 .player-0 { grid-row: 2; grid-column: span 2; border-top: 2px solid #000; }
     .grid-3 .player-1 { grid-row: 1; grid-column: 1; border-right: 2px solid #000; }
     .grid-3 .player-2 { grid-row: 1; grid-column: 2; }
-
     .grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
     .grid-4 .player-0, .grid-4 .player-1 { border-bottom: 2px solid #000; }
     .grid-4 .player-0, .grid-4 .player-2 { border-right: 2px solid #000; }
-
     .grid-5 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
     .grid-5 .player-0, .grid-5 .player-1 { border-bottom: 2px solid #000; }
     .grid-5 .player-2, .grid-5 .player-3 { border-bottom: 2px solid #000; }
     .grid-5 .player-0, .grid-5 .player-2 { border-right: 2px solid #000; }
     .grid-5 .player-4 { grid-column: span 2; }
-
     .grid-6 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
     .grid-6 .player-0, .grid-6 .player-1, .grid-6 .player-2, .grid-6 .player-3 { border-bottom: 2px solid #000; }
     .grid-6 .player-0, .grid-6 .player-2, .grid-6 .player-4 { border-right: 2px solid #000; }
@@ -148,6 +145,11 @@ type LayoutType = 'horizontal' | 'vertical' | 'cross';
       font-weight: bold; font-size: 0.7rem; box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
+    /* Move menu up in 1 player mode to avoid covering numbers */
+    .p1-mode .central-menu-btn {
+      top: 10%;
+    }
+
     .overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(255,255,255,0.98); display: flex; align-items: center; justify-content: center; z-index: 200;
@@ -171,7 +173,6 @@ export class App {
   public showMenu = signal(false);
   public menuStep = signal<MenuStep>('players');
 
-  // Used to track selection before starting the game
   public tempPlayers = signal(3);
   private tempLayout: LayoutType = 'horizontal';
 
@@ -218,6 +219,11 @@ export class App {
     const n = this.players();
     const l = this.layout();
 
+    if (n === 5) {
+      if (index === 4) return 'rotate(0deg)';
+      return (index % 2 === 0) ? 'rotate(90deg)' : 'rotate(-90deg)';
+    }
+
     if (l === 'cross' && n === 4) {
       if (index === 0) return 'rotate(180deg)';
       if (index === 1) return 'rotate(90deg)';
@@ -233,8 +239,7 @@ export class App {
 
     if (l === 'horizontal') {
       if (n === 1) return 'rotate(0deg)';
-      if (index % 2 === 0) return 'rotate(90deg)';
-      return 'rotate(-90deg)';
+      return (index % 2 === 0) ? 'rotate(90deg)' : 'rotate(-90deg)';
     }
 
     if (l === 'vertical') {
